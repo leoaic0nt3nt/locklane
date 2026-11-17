@@ -33,6 +33,8 @@ func TestWireguardRejectsUnsafeProfiles(t *testing.T) {
 }
 func TestProjectDoesNotExposeHomeOrSecrets(t *testing.T) {
 	h := t.TempDir()
+	t.Setenv("HOME", h)
+	t.Setenv("USERPROFILE", h)
 	t.Setenv("LOCKLANE_HOME", filepath.Join(h, "settings"))
 	_ = os.MkdirAll(homeDir(), 0700)
 	project := filepath.Join(h, "project")

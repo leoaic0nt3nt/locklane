@@ -11,7 +11,8 @@ for system,arch in [('darwin','arm64'),('darwin','amd64'),('windows','amd64'),('
   if system=='darwin':
    app=folder/'LOCKLANE.app';binary=app/'Contents/MacOS/LOCKLANE';binary.parent.mkdir(parents=True)
    launcher=app/'Contents/MacOS/Launch';launcher.write_text('#!/bin/sh\numask 077\nmkdir -p "$HOME/Library/Logs"\n"$(dirname "$0")/LOCKLANE" > "$HOME/Library/Logs/LOCKLANE.log" 2>&1 &\n');launcher.chmod(0o755)
-   (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'content.leo.locklane','CFBundleName':'LOCKLANE','CFBundleExecutable':'Launch','CFBundlePackageType':'APPL','CFBundleShortVersionString':VERSION,'LSUIElement':True}))
+   (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'content.leo.locklane','CFBundleName':'LOCKLANE','CFBundleExecutable':'Launch','CFBundlePackageType':'APPL','CFBundleIconFile':'Locklane','CFBundleShortVersionString':VERSION,'LSUIElement':True}))
+   resources=app/'Contents/Resources';resources.mkdir();shutil.copyfile(ROOT/'docs/Locklane.icns',resources/'Locklane.icns')
    install=folder/'Install.command';install.write_text('#!/bin/sh\nset -eu\ncd "$(dirname "$0")"\nmkdir -p "$HOME/Applications"\nif [ -e "$HOME/Applications/LOCKLANE.app" ]; then echo "LOCKLANE already exists. Move the previous app aside before installing."; exit 1; fi\ncp -R LOCKLANE.app "$HOME/Applications/LOCKLANE.app"\nopen "$HOME/Applications/LOCKLANE.app"\n');install.chmod(0o755)
   else:
    binary=folder/'LOCKLANE.exe'

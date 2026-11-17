@@ -167,6 +167,23 @@ func probe() (string, error) {
 	return out, nil
 }
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "inspect-ip" {
+		ip, e := probe()
+		if e != nil {
+			_ = gate(false)
+			write(State{Reason: e.Error()})
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		match := os.Getenv("LL_EXPECTED_IP") != "" && ip == os.Getenv("LL_EXPECTED_IP")
+		if os.Getenv("LL_EXPECTED_IP") != "" && !match {
+			_ = gate(false)
+			write(State{IP: ip, Reason: "Exit IP does not match the pinned address"})
+		}
+		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ip": ip, "match": match})
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "check-profile" {
 		if e := validateProxy(); e != nil {
 			fmt.Fprintln(os.Stderr, e)

@@ -283,6 +283,20 @@ func (a *App) routes() http.Handler {
 		}
 		jsonOut(w, map[string]string{"path": strings.TrimSpace(s)})
 	}))
+	mux.HandleFunc("POST /api/ip", a.auth(func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		out, e := compose(ctx, "exec", "-T", "gateway", "locklane-gate", "inspect-ip")
+		var v struct {
+			IP    string `json:"ip"`
+			Match bool   `json:"match"`
+		}
+		if e != nil || json.Unmarshal([]byte(out), &v) != nil || !publicIP(net.ParseIP(v.IP)) {
+			fail(w, errors.New("Не удалось проверить IP. Сначала включи среду и дождись подключения"))
+			return
+		}
+		jsonOut(w, v)
+	}))
 	mux.HandleFunc("POST /api/check", a.auth(func(w http.ResponseWriter, r *http.Request) {
 		if e := ensureWorkspace(); e != nil {
 			fail(w, e)

@@ -10,3 +10,5 @@ LOCKLANE's MIT license covers its own orchestration code, interface and scripts.
 - Claude Code is obtained by the end user's Docker build from Anthropic's npm package, version 2.1.326. No Claude account, token, native host binary or subscription is distributed with LOCKLANE. Anthropic's terms apply.
 
 The release ZIP contains orchestration binaries and source references, not bundled VPN cores or Claude binaries. The user's build pulls upstream images. If you redistribute built runtime images, include the relevant notices and satisfy corresponding source/license obligations; the source links above identify the core versions used here.
+
+Interface icons: [Lucide](https://github.com/lucide-icons/lucide), ISC license. Settings and refresh paths are sourced from the official icon repository.

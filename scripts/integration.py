@@ -69,6 +69,7 @@ try:
   expected=d('run','--rm','--entrypoint','curl',IMAGE,'-4','-fsS','--retry','3','https://api.ipify.org').stdout.strip()
   gateway(root,'wireguard',expected);wait_state(root/'status/status.json',lambda s:s.get('ready'));canary(root)
   actual=app("import subprocess; print(subprocess.check_output(['curl','-4','-fsS','--max-time','8','https://api.ipify.org'],text=True).strip())").strip();assert actual==expected;record('WireGuard positive route and exact exit IP')
+  fresh=json.loads(d('exec',PREFIX+'gateway','locklane-gate','inspect-ip').stdout);assert fresh['ip']==expected and fresh['match'];record('manual IP check uses the same unprivileged tunnel probe')
   p=d('exec',PREFIX+'canary','locklane-run','--version');assert '2.1.326' in p.stdout;record('real Claude Code binary starts inside a verified namespace without account login')
   app("import os; s=open('/proc/self/status').read(); assert os.getuid()==1000 and 'NoNewPrivs:\\t1' in s and 'CapEff:\\t0000000000000000' in s; assert not os.path.exists('/var/run/docker.sock')")
   record('workspace is unprivileged and has no Docker socket')

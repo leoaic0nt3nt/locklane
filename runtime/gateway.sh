@@ -13,6 +13,9 @@ iptables -N LL_APP 2>/dev/null || true
 iptables -F LL_APP
 iptables -A LL_APP -j DROP
 iptables -A INPUT -i lo -j ACCEPT
+# sing-tun hands TCP streams back to a local listener through its TUN.
+# The workload still cannot reach the private bridge or send via eth0.
+if [ "$LL_PROVIDER" = proxy ]; then iptables -A INPUT -i ll0 -p tcp -j ACCEPT; fi
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 # Root is the trusted gateway control plane; Claude never runs as root.
 iptables -A OUTPUT -m owner --uid-owner 0 -j ACCEPT

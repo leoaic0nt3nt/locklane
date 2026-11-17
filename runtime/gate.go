@@ -262,7 +262,7 @@ func prepareProxy() (string, error) {
 			return "", e
 		}
 		// This private loopback address is NOT allowed to the workspace by iptables.
-		outbound = map[string]any{"type": "socks", "tag": "proxy", "server": "127.0.0.2", "server_port": 1080, "version": "5"}
+		outbound = map[string]any{"type": "socks", "tag": "proxy", "server": "127.0.0.2", "server_port": 1080, "version": "5", "bind_interface": "lo"}
 	} else if p.Core != "singbox" {
 		return "", errors.New("Unknown proxy engine")
 	}

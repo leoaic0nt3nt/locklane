@@ -65,7 +65,7 @@ IPv6 в beta закрыт полностью. Приватные сети, metad
 
 Реальный статус выполнения смотри в Actions и артефакте `network-proof.json`. Зелёная сборка бинарника не является проверкой native UI или перезагрузки Windows/Mac. [Протокол приёмки](docs/ACCEPTANCE.md) объясняет ручные проверки перед стабильным выпуском.
 
-Собрать: Go 1.27.4, затем `go build .`. Пакеты: `python3 scripts/package.py`. Приложение не требует Go/Python на хосте получателя; Docker обязателен. `LOCKLANE_HOME` и `LOCKLANE_DOCKER_CONTEXT` предназначены для изолированного dev/CI; production рассчитан на локальный `desktop-linux`.
+Собрать: Go 1.27.4, затем `go build .`. Пакеты: `python3 scripts/package.py`. Приложение не требует Go/Python на хосте получателя; Docker обязателен. `LOCKLANE_HOME` и `LOCKLANE_DOCKER_CONTEXT` предназначены для изолированного dev/CI; production автоматически ищет локальный Docker Desktop в `desktop-linux` / `default` и отказывает удалённым endpoints.
 
 Команды: `locklane doctor`, `locklane run`, `locklane run --version`, `locklane stop`, `locklane version`. Для macOS CLI находится в `LOCKLANE.app/Contents/MacOS/LOCKLANE`.
 

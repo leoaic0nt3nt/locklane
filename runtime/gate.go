@@ -229,7 +229,9 @@ func main() {
 		if e = gate(s.Ready); e != nil {
 			s.Ready = false
 			s.Reason = e.Error()
-			_ = gate(false)
+			if gate(false) != nil {
+				_, _ = run("ip", "link", "set", "dev", iface(), "down")
+			}
 		}
 		write(s)
 		// In case of a process crash, the kernel's tunnel-only rules remain in place.

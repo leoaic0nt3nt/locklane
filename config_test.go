@@ -140,3 +140,16 @@ func TestPowerShellLiteralEscaping(t *testing.T) {
 		t.Fatal("shell injection")
 	}
 }
+
+func TestProductionDockerEndpointIsLocal(t *testing.T) {
+	for _, s := range []string{"unix:///var/run/docker.sock", "npipe:////./pipe/dockerDesktopLinuxEngine"} {
+		if !localEndpoint(s) {
+			t.Fatal("local endpoint rejected")
+		}
+	}
+	for _, s := range []string{"ssh://production", "tcp://remote:2376", "https://server"} {
+		if localEndpoint(s) {
+			t.Fatal("remote engine accepted")
+		}
+	}
+}

@@ -431,6 +431,7 @@ func main() {
 		}
 		return
 	}
+	go doctor()
 	token := make([]byte, 32)
 	if _, e := rand.Read(token); e != nil {
 		panic(e)

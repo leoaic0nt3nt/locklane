@@ -78,6 +78,8 @@ func TestExportCoreFixtures(t *testing.T) {
 		"tuic://" + testUUID + ":password@203.0.113.1:443?sni=example.com",
 		"ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@203.0.113.1:443",
 	}
+	vm, _ := json.Marshal(map[string]any{"v": "2", "add": "203.0.113.1", "port": "443", "id": testUUID, "aid": "0", "net": "ws", "path": "/ws", "tls": "tls", "sni": "example.com"})
+	links = append(links, "vmess://"+base64.StdEncoding.EncodeToString(vm), "socks://user:pass@203.0.113.1:1080")
 	for i, link := range links {
 		n, e := parseProxyLink(link, false)
 		if e != nil {

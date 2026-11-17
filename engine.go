@@ -11,20 +11,29 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
 //go:embed web/*.html web/*.css web/*.js web/*.svg runtime/*
 var assets embed.FS
 
+var contextMu sync.RWMutex
+var selectedContext = "desktop-linux"
+
 func dockerContext() string {
 	if s := os.Getenv("LOCKLANE_DOCKER_CONTEXT"); s != "" {
 		return s
 	}
-	return "desktop-linux"
+	contextMu.RLock()
+	defer contextMu.RUnlock()
+	return selectedContext
 }
 func docker(ctx context.Context, args ...string) (string, error) {
-	a := append([]string{"--context", dockerContext()}, args...)
+	return dockerAt(ctx, dockerContext(), args...)
+}
+func dockerAt(ctx context.Context, name string, args ...string) (string, error) {
+	a := append([]string{"--context", name}, args...)
 	b, e := exec.CommandContext(ctx, "docker", a...).CombinedOutput()
 	if e != nil {
 		return string(b), fmt.Errorf("Docker: %w", e)
@@ -37,24 +46,43 @@ func compose(ctx context.Context, args ...string) (string, error) {
 	return docker(ctx, a...)
 }
 func doctor() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	out, e := docker(ctx, "info", "--format", "{{json .}}")
-	if e != nil {
-		return errors.New("Запусти Docker Desktop в режиме Linux containers. Настройки текущего Docker-контекста LOCKLANE не переключает")
+	candidates := []string{"desktop-linux", "default"}
+	dev := os.Getenv("LOCKLANE_DOCKER_CONTEXT")
+	if dev != "" {
+		candidates = []string{dev}
 	}
-	var v struct {
-		OSType          string
-		OperatingSystem string
+	for _, name := range candidates {
+		if dev == "" {
+			endpoint, err := dockerAt(ctx, name, "context", "inspect", name, "--format", "{{.Endpoints.docker.Host}}")
+			if err != nil || !localEndpoint(strings.TrimSpace(endpoint)) {
+				continue
+			}
+		}
+		out, err := dockerAt(ctx, name, "info", "--format", "{{json .}}")
+		var info struct {
+			OSType          string
+			OperatingSystem string
+		}
+		if err != nil || json.Unmarshal([]byte(out), &info) != nil || info.OSType != "linux" {
+			continue
+		}
+		if dev == "" && !strings.Contains(strings.ToLower(info.OperatingSystem), "docker desktop") {
+			continue
+		}
+		if _, err = dockerAt(ctx, name, "compose", "version"); err != nil {
+			continue
+		}
+		contextMu.Lock()
+		selectedContext = name
+		contextMu.Unlock()
+		return nil
 	}
-	if json.Unmarshal([]byte(out), &v) != nil || v.OSType != "linux" {
-		return errors.New("Нужен Linux-движок Docker Desktop")
-	}
-	if os.Getenv("LOCKLANE_DOCKER_CONTEXT") == "" && !strings.Contains(strings.ToLower(v.OperatingSystem), "docker desktop") {
-		return errors.New("Для этой сборки нужен локальный Docker Desktop")
-	}
-	_, e = docker(ctx, "compose", "version")
-	return e
+	return errors.New("Запусти локальный Docker Desktop в режиме Linux containers. Глобальный Docker context не переключается")
+}
+func localEndpoint(s string) bool {
+	return strings.HasPrefix(s, "unix://") || strings.HasPrefix(s, "npipe://")
 }
 func materialize(c Config) error {
 	root := filepath.Join(homeDir(), "runtime")

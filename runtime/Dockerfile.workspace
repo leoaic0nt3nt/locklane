@@ -1,0 +1,10 @@
+FROM node:22-bookworm-slim
+ARG CLAUDE_VERSION=2.1.326
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git python3 ripgrep procps && rm -rf /var/lib/apt/lists/* && \
+    npm install -g @anthropic-ai/claude-code@${CLAUDE_VERSION} && npm cache clean --force
+COPY ll-run.py /usr/local/bin/locklane-run
+RUN chmod 755 /usr/local/bin/locklane-run
+ENV HOME=/home/node CLAUDE_CONFIG_DIR=/home/node/.claude DISABLE_AUTOUPDATER=1
+USER 1000:1000
+WORKDIR /workspace
+ENTRYPOINT ["sleep", "infinity"]

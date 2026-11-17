@@ -1,0 +1,7 @@
+/dist/
+/.local/
+/qa/
+*.conf
+*.key
+*.log
+.DS_Store

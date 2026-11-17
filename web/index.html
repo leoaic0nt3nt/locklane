@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LOCKLANE: код внутри</title><meta name="description" content="Локальная изолированная среда для Claude Code с подключением своего VPN и проверкой постоянного IP."><link rel="icon" href="/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/app.css"></head>
+<body>
+<a class="skip" href="#main">К настройкам</a>
+<header class="topbar"><a class="brand" href="/" aria-label="LOCKLANE"><img src="/mark.svg" width="32" height="32" alt=""><span class="wordmark">LOCKLANE</span></a><span class="edition">Local-first / beta</span><button id="help" class="text-button">Как это работает</button></header>
+<main id="main" class="shell">
+<section class="intro"><div><h1>Код внутри.<br>Сеть под контролем.</h1><p>Claude Code в изолированной среде, с выходом только через твой VPN.</p></div><div class="platform"><span id="version">0.1 beta</span><span>macOS / Windows</span></div></section>
+<div class="workbench">
+<section class="setup" aria-labelledby="setup-title"><div class="section-head"><h2 id="setup-title">Твоя среда</h2><span id="saved">Настройка с нуля</span></div>
+<form id="settings">
+<fieldset class="provider"><legend>Подключение</legend><div class="segments"><input id="proxy" type="radio" name="provider" value="proxy" checked><label for="proxy">Подписка</label><input id="ts" type="radio" name="provider" value="tailscale"><label for="ts">Tailscale</label><input id="wg" type="radio" name="provider" value="wireguard"><label for="wg">WireGuard</label></div></fieldset>
+<div id="proxy-fields" class="field"><label for="subscription">Ключ или ссылка на подписку</label><div class="folder"><input id="subscription" type="password" placeholder="vless://, ss://, https://…" autocomplete="off" spellcheck="false"><button id="import" class="secondary" type="button">Импорт</button></div><small>Обычные подписки для Happ / Incy и других клиентов. Закрытые crypto-ссылки требуют экспорта.</small><label for="server" class="server-label">Один выбранный сервер</label><select id="server"><option value="">Сначала импортируй подключение</option></select><small id="import-info">Без автопереключения между странами и серверами.</small></div>
+<div id="tailscale-fields" class="field" hidden><label for="exit-node">Адрес своего exit node</label><input id="exit-node" placeholder="100.x.x.x" spellcheck="false" autocomplete="off"><small>Внутренний IPv4 сервера из панели Tailscale.</small></div>
+<div id="wireguard-fields" class="field" hidden><label for="wg-file">Профиль WireGuard</label><input id="wg-file" type="file" accept=".conf"><small id="wg-hint">Один Peer, полный IPv4-туннель. Ключ останется на этом компьютере.</small></div>
+<div class="field"><label for="expected-ip">Постоянный внешний IPv4 VPN</label><input id="expected-ip" placeholder="Можно определить при подключении" spellcheck="false" autocomplete="off"><small>Укажи известный IP или подключись и закрепи найденный.</small></div>
+<div class="field"><label for="project">Папка проекта</label><div class="folder"><input id="project" placeholder="Выбери только нужный проект" required spellcheck="false" autocomplete="off"><button id="pick-folder" class="secondary" type="button">Выбрать</button></div><small>Claude сможет читать и менять файлы только в этой переданной папке и внутри среды.</small></div>
+<div class="save-row"><button id="save" class="secondary" type="submit">Сохранить настройки</button><span>Сохранение остановит прежнюю среду.</span></div>
+</form>
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+</section>
+<section class="gate" aria-labelledby="gate-title">
+<div class="gate-heading"><h2 id="gate-title">Контроль выхода</h2><span id="mode">Не настроено</span></div>
+<div class="lock-state" id="lock-state">Выход<br>закрыт.</div><p class="gate-reason" id="reason">Проверяем локальный статус…</p>
+<div class="route" aria-label="Маршрут Claude Code через шлюз к выходному IP"><div><span>Claude Code</span><b>Внутри VM</b></div><div class="route-link" aria-hidden="true"></div><div><span>VPN-шлюз</span><b id="route-status">Не проверен</b></div><div class="route-link" aria-hidden="true"></div><div><span>Выходной IP</span><b id="actual-ip">Не подтверждён</b></div></div>
+<a id="login" class="login" href="https://login.tailscale.com/" target="_blank" rel="noopener noreferrer" hidden>Войти в Tailscale</a>
+<div class="gate-actions"><button id="connect" class="primary" disabled>Собрать и подключить</button><button id="pin" class="primary" hidden disabled>Закрепить этот IP</button><button id="launch" class="primary" hidden disabled>Запустить Claude Code</button><button id="stop" class="gate-secondary">Остановить среду</button></div>
+<div class="gate-footer"><span>Без прямого выхода</span><button id="check" class="gate-text" disabled>Самопроверка</button></div>
+</section>
+</div>
+<section class="activity" aria-labelledby="activity-title"><div class="section-head"><h2 id="activity-title">Локальный журнал</h2><span id="operation">Нет активных операций</span></div><pre id="logs" aria-live="polite">Здесь появятся результаты сборки и проверок. Промпты и код проекта в журнал не записываются.</pre></section>
+<footer><span>Твой проект. Твой VPN. Локальные данные.</span><a href="https://docs.docker.com/desktop/" target="_blank" rel="noopener noreferrer">Нужен Docker Desktop</a></footer>
+<details id="guide"><summary>Как работает LOCKLANE</summary><div class="guide-copy"><p>1. Установи и запусти Docker Desktop в режиме Linux containers.</p><p>2. Импортируй обычную подписку или ключ VLESS/Reality, VMess, Trojan, Shadowsocks, Hysteria2, TUIC или SOCKS5. Либо укажи WireGuard .conf или адрес Tailscale exit node. Затем укажи постоянный внешний IPv4 выбранного сервера и папку проекта.</p><p>3. Сохрани настройки и подключись. В первый раз Docker загрузит образы. Для Tailscale появится ссылка входа в твой аккаунт.</p><p>4. После проверки IP открой Claude Code. Авторизуйся внутри его терминала. Системный браузер для OAuth работает отдельно: его маршрут LOCKLANE не контролирует.</p><p>Сеть ограничивает фильтр внутри VM. Claude работает без root, без Docker socket и без домашней папки компьютера. IPv6 и доступ к локальной сети в этой версии закрыты.</p><p>LOCKLANE защищает только запущенную здесь среду, а не приложения на компьютере. Администратор хоста имеет доступ к VM. Изменение IP внутри работающего туннеля обнаруживается периодической проверкой; абсолютная защита от утечек и блокировок аккаунта не обещается.</p></div></details>
+<noscript><p>Для локальной панели нужен JavaScript. Данные не отправляются на внешний сервер LOCKLANE.</p></noscript>
+</main><script src="/app.js"></script>
+</body></html>

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -133,11 +134,20 @@ func TestAtomicGateAndFailClosedOrder(t *testing.T) {
 	}
 }
 func TestPowerShellLiteralEscaping(t *testing.T) {
-	if ps("a'b") != "'a''b'" {
-		t.Fatal("PowerShell injection")
-	}
 	if shell("a'b") != "'a'\"'\"'b'" {
 		t.Fatal("shell injection")
+	}
+}
+
+func TestPowerShellUnicodeRoundTrip(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("actual PowerShell is tested on Windows")
+	}
+	for _, value := range []string{`C:\Проекты\Тест`, `C:\O’Connor\a'b\$value`, "emoji-🚀"} {
+		out, err := powershell("[Console]::Write(" + ps(value) + ")")
+		if err != nil || out != value {
+			t.Fatalf("PowerShell Unicode/literal round-trip failed: %q, %v", out, err)
+		}
 	}
 }
 

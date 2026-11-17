@@ -333,8 +333,11 @@ p=subprocess.run(['curl','-4','--interface','eth0','--max-time','2','-fsS','http
 p=subprocess.run(['curl','-4','--max-time','5','-fsS','https://api.ipify.org'],capture_output=True,text=True);assert p.returncode==0 and p.stdout.strip()==s['ip']
 print('PASS: tunnel IP, IPv6 denial, direct-interface denial, private network denial, unprivileged user, no Docker socket.')`
 
-func ps(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+func ps(s string) string {
+	return "([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('" + base64.StdEncoding.EncodeToString([]byte(s)) + "')))"
+}
 func powershell(s string) (string, error) {
+	s = "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);$OutputEncoding=[Console]::OutputEncoding;" + s
 	u := utf16.Encode([]rune(s))
 	b := make([]byte, len(u)*2)
 	for i, v := range u {

@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -96,6 +97,20 @@ func (a *App) routes() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		files.ServeHTTP(w, r)
 	})
+	mux.HandleFunc("GET /api/ping", a.auth(func(w http.ResponseWriter, r *http.Request) { jsonOut(w, map[string]string{"version": version}) }))
+	mux.HandleFunc("POST /api/quit", a.auth(func(w http.ResponseWriter, r *http.Request) {
+		a.mu.Lock()
+		if a.cancel != nil {
+			a.cancel()
+		}
+		a.mu.Unlock()
+		if e := stopStack(); e != nil {
+			fail(w, e)
+			return
+		}
+		jsonOut(w, map[string]bool{"ok": true})
+		go func() { time.Sleep(time.Second); _ = os.Remove(filepath.Join(homeDir(), "session.json")); os.Exit(0) }()
+	}))
 	mux.HandleFunc("GET /api/state", a.auth(func(w http.ResponseWriter, r *http.Request) {
 		c, _ := readConfig()
 		c.Wireguard = ""
@@ -409,6 +424,13 @@ func main() {
 	if e := os.MkdirAll(homeDir(), 0700); e != nil {
 		panic(e)
 	}
+	if existing := existingSession(); existing != "" {
+		fmt.Println("LOCKLANE is already running.")
+		if os.Getenv("LOCKLANE_NO_BROWSER") == "" {
+			_ = openBrowser(existing)
+		}
+		return
+	}
 	token := make([]byte, 32)
 	if _, e := rand.Read(token); e != nil {
 		panic(e)
@@ -420,6 +442,8 @@ func main() {
 	addr := "http://" + ln.Addr().String()
 	a := &App{token: hex.EncodeToString(token), origin: addr}
 	url := addr + "/#" + a.token
+	session, _ := json.Marshal(map[string]string{"url": url})
+	_ = writePrivate(filepath.Join(homeDir(), "session.json"), session)
 	fmt.Println("LOCKLANE", version, "— local control panel:", url)
 	if os.Getenv("LOCKLANE_NO_BROWSER") == "" {
 		_ = openBrowser(url)
@@ -428,4 +452,39 @@ func main() {
 	if e := server.Serve(ln); e != nil && e != http.ErrServerClosed {
 		panic(e)
 	}
+}
+
+func existingSession() string {
+	b, e := os.ReadFile(filepath.Join(homeDir(), "session.json"))
+	if e != nil {
+		return ""
+	}
+	var s struct {
+		URL string `json:"url"`
+	}
+	if json.Unmarshal(b, &s) != nil {
+		return ""
+	}
+	u, e := url.Parse(s.URL)
+	if e != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.Port() == "" || len(u.Fragment) != 64 {
+		return ""
+	}
+	token := u.Fragment
+	u.Fragment = ""
+	u.Path = "/api/ping"
+	req, e := http.NewRequest("GET", u.String(), nil)
+	if e != nil {
+		return ""
+	}
+	req.Header.Set("X-Locklane-Token", token)
+	client := &http.Client{Timeout: time.Second}
+	res, e := client.Do(req)
+	if e != nil {
+		return ""
+	}
+	defer res.Body.Close()
+	if res.StatusCode == 200 {
+		return s.URL
+	}
+	return ""
 }

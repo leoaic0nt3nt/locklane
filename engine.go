@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-//go:embed web/* runtime/*
+//go:embed web/*.html web/*.css web/*.js web/*.svg runtime/*
 var assets embed.FS
 
 func dockerContext() string {

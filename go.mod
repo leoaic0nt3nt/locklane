@@ -1,3 +1,3 @@
-module github.com/C0mrade530/locklane
+module github.com/leoaic0nt3nt/locklane
 
 go 1.25

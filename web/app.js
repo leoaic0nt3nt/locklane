@@ -24,4 +24,6 @@ $('logs').textContent=s.logs?.length?s.logs.join('\n\n'):'Здесь появя�
 $('login').hidden=!t.login_url;if(t.login_url)$('login').href=t.login_url;
 if(s.error)notice(s.error,true);else if(wasBusy&&!s.busy)notice('Операция завершена. Проверь состояние справа.');wasBusy=s.busy;
 }catch(e){$('reason').textContent='Не удалось прочитать статус. Запуск запрещён.';$('launch').disabled=true;$('connect').disabled=true;$('check').disabled=true;$('pin').disabled=true;$('lock-state').innerHTML='Статус<br>неизвестен.';document.querySelector('.gate').classList.remove('ready');notice(e.message,true);}finally{polling=false;}}
-poll();setInterval(poll,2500);
+poll();const pollTimer=setInterval(poll,2500);
+
+$('quit').addEventListener('click',async()=>{try{$('quit').disabled=true;await api('quit',{});notice('Среда остановлена. LOCKLANE закрыт; вкладку можно закрыть.');clearInterval(pollTimer);}catch(e){notice(e.message,true);$('quit').disabled=false;}});

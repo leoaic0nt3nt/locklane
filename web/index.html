@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LOCKLANE: код внутри</title><meta name="description" content="Локальная изолированная среда для Claude Code с подключением своего VPN и проверкой постоянного IP."><link rel="icon" href="/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/app.css"></head>
 <body>
 <a class="skip" href="#main">К настройкам</a>
-<header class="topbar"><a class="brand" href="/" aria-label="LOCKLANE"><img src="/mark.svg" width="32" height="32" alt=""><span class="wordmark">LOCKLANE</span></a><span class="edition">Local-first / beta</span><button id="help" class="text-button">Как это работает</button></header>
+<header class="topbar"><a class="brand" href="/" aria-label="LOCKLANE"><img src="/mark.svg" width="32" height="32" alt=""><span class="wordmark">LOCKLANE</span></a><span class="edition">Local-first / beta</span><button id="help" class="text-button">Справка</button><button id="quit" class="text-button quit">Выйти</button></header>
 <main id="main" class="shell">
 <section class="intro"><div><h1>Код внутри.<br>Сеть под контролем.</h1><p>Claude Code в изолированной среде, с выходом только через твой VPN.</p></div><div class="platform"><span id="version">0.1 beta</span><span>macOS / Windows</span></div></section>
 <div class="workbench">
@@ -24,7 +24,7 @@
 <div class="lock-state" id="lock-state">Выход<br>закрыт.</div><p class="gate-reason" id="reason">Проверяем локальный статус…</p>
 <div class="route" aria-label="Маршрут Claude Code через шлюз к выходному IP"><div><span>Claude Code</span><b>Внутри VM</b></div><div class="route-link" aria-hidden="true"></div><div><span>VPN-шлюз</span><b id="route-status">Не проверен</b></div><div class="route-link" aria-hidden="true"></div><div><span>Выходной IP</span><b id="actual-ip">Не подтверждён</b></div></div>
 <a id="login" class="login" href="https://login.tailscale.com/" target="_blank" rel="noopener noreferrer" hidden>Войти в Tailscale</a>
-<div class="gate-actions"><button id="connect" class="primary" disabled>Собрать и подключить</button><button id="pin" class="primary" hidden disabled>Закрепить этот IP</button><button id="launch" class="primary" hidden disabled>Запустить Claude Code</button><button id="stop" class="gate-secondary">Остановить среду</button></div>
+<div class="gate-actions"><button id="connect" class="primary" disabled>Подключить</button><button id="pin" class="primary" hidden disabled>Закрепить этот IP</button><button id="launch" class="primary" hidden disabled>Запустить Claude Code</button><button id="stop" class="gate-secondary">Остановить среду</button></div>
 <div class="gate-footer"><span>Без прямого выхода</span><button id="check" class="gate-text" disabled>Самопроверка</button></div>
 </section>
 </div>

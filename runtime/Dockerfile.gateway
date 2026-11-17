@@ -2,7 +2,7 @@ FROM golang:1.27.4-bookworm AS build
 WORKDIR /build
 COPY gate.go .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /gate gate.go
-FROM ghcr.io/sagernet/sing-box:1.14.4 AS singbox
+FROM ghcr.io/sagernet/sing-box:v1.14.4 AS singbox
 FROM ghcr.io/xtls/xray-core:26.11.9 AS xray
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 iptables wireguard-tools wireguard-go util-linux gnupg && \

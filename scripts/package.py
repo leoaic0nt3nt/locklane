@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build platform archives without modifying host applications or startup."""
-import hashlib,json,os,pathlib,plistlib,shutil,subprocess,tempfile,zipfile
+import hashlib,json,os,platform,pathlib,plistlib,shutil,subprocess,tempfile,zipfile
 ROOT=pathlib.Path(__file__).resolve().parents[1];os.chdir(ROOT)
 OUT=ROOT/'dist';OUT.mkdir(exist_ok=True)
 GO=os.environ.get('GO','go');VERSION='0.1.0-beta.1'
@@ -19,7 +19,7 @@ for system,arch in [('darwin','arm64'),('darwin','amd64'),('windows','amd64'),('
    (folder/'Install.ps1').write_text("$ErrorActionPreference='Stop'\n$dest=Join-Path $env:LOCALAPPDATA 'LOCKLANE'\nif(Test-Path $dest){throw 'LOCKLANE already exists. Back up the previous app first.'}\nNew-Item -ItemType Directory -Path $dest | Out-Null\nCopy-Item (Join-Path $PSScriptRoot 'LOCKLANE.exe') $dest\n$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'LOCKLANE.lnk'))\n$s.TargetPath=Join-Path $dest 'LOCKLANE.exe';$s.Save()\nStart-Process (Join-Path $dest 'LOCKLANE.exe')\n")
   env=os.environ.copy();env.update(GOOS=system,GOARCH=arch,CGO_ENABLED='0')
   subprocess.run([GO,'build','-trimpath','-ldflags=-s -w','-o',str(binary),'.'],env=env,check=True)
-  if system=='darwin' and os.uname().sysname=='Darwin':subprocess.run(['codesign','--force','--sign','-','--timestamp=none',str(app)],check=True)
+  if system=='darwin' and platform.system()=='Darwin':subprocess.run(['codesign','--force','--sign','-','--timestamp=none',str(app)],check=True)
   for f in ['README.md','LICENSE','SECURITY.md','COMPATIBILITY.md','THIRD_PARTY.md']:shutil.copyfile(ROOT/f,folder/f)
   shutil.copytree(ROOT/'docs',folder/'docs')
   with zipfile.ZipFile(OUT/(name+'.zip'),'w',compression=zipfile.ZIP_DEFLATED) as z:

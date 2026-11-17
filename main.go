@@ -350,14 +350,14 @@ func openTerminal() error {
 	switch runtime.GOOS {
 	case "darwin":
 		p := filepath.Join(homeDir(), "Claude Code.command")
-		body := "#!/bin/sh\nexport LOCKLANE_HOME=" + shell(homeDir()) + "\nexport LOCKLANE_DOCKER_CONTEXT=" + shell(dockerContext()) + "\nexec " + shell(bin) + " run\n"
+		body := "#!/bin/sh\nexport LOCKLANE_HOME=" + shell(homeDir()) + "\nexport LOCKLANE_DOCKER_CONTEXT=" + shell(os.Getenv("LOCKLANE_DOCKER_CONTEXT")) + "\nexec " + shell(bin) + " run\n"
 		if e = writePrivate(p, []byte(body)); e != nil {
 			return e
 		}
 		_ = os.Chmod(p, 0700)
 		return exec.Command("open", "-a", "Terminal", p).Start()
 	case "windows":
-		_, e := powershell("$env:LOCKLANE_HOME=" + ps(homeDir()) + ";$env:LOCKLANE_DOCKER_CONTEXT=" + ps(dockerContext()) + ";Start-Process -FilePath " + ps(bin) + " -ArgumentList 'run'")
+		_, e := powershell("$env:LOCKLANE_HOME=" + ps(homeDir()) + ";$env:LOCKLANE_DOCKER_CONTEXT=" + ps(os.Getenv("LOCKLANE_DOCKER_CONTEXT")) + ";Start-Process -FilePath " + ps(bin) + " -ArgumentList 'run'")
 		return e
 	default:
 		return errors.New("Запусти locklane run в терминале")
@@ -385,7 +385,7 @@ func runCLI() {
 	}
 	args := []string{"--context", dockerContext(), "compose", "--project-name", "locklane", "--file", filepath.Join(homeDir(), "compose.json"), "exec", "workspace", "locklane-run"}
 	args = append(args, os.Args[2:]...)
-	cmd := exec.Command("docker", args...)
+	cmd := exec.Command(dockerBinary(), args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

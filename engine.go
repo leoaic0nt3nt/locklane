@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +35,7 @@ func docker(ctx context.Context, args ...string) (string, error) {
 }
 func dockerAt(ctx context.Context, name string, args ...string) (string, error) {
 	a := append([]string{"--context", name}, args...)
-	b, e := exec.CommandContext(ctx, "docker", a...).CombinedOutput()
+	b, e := exec.CommandContext(ctx, dockerBinary(), a...).CombinedOutput()
 	if e != nil {
 		return string(b), fmt.Errorf("Docker: %w", e)
 	}
@@ -201,4 +202,24 @@ func tail(s string, n int) string {
 		return s[len(s)-n:]
 	}
 	return s
+}
+
+func dockerBinary() string {
+	if p, e := exec.LookPath("docker"); e == nil {
+		return p
+	}
+	var candidates []string
+	home, _ := os.UserHomeDir()
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = []string{"/Applications/Docker.app/Contents/Resources/bin/docker", filepath.Join(home, ".docker", "bin", "docker"), "/usr/local/bin/docker"}
+	case "windows":
+		candidates = []string{filepath.Join(os.Getenv("ProgramFiles"), "Docker", "Docker", "resources", "bin", "docker.exe")}
+	}
+	for _, p := range candidates {
+		if st, e := os.Stat(p); e == nil && !st.IsDir() {
+			return p
+		}
+	}
+	return "docker"
 }

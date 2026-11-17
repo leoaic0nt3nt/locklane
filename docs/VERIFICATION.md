@@ -1,6 +1,6 @@
 # Verification / 18 November 2026
 
-Runtime proof: [GitHub Actions run 44185694860](https://github.com/leoaic0nt3nt/locklane/actions/runs/44185694860), source `b1ddc3e72ddb3b20184377992ba63939a54475e9`.
+Runtime proof: [CI workflow and public runs](https://github.com/leoaic0nt3nt/locklane/actions/workflows/ci.yml). The initial beta was tested in the private development repository before publication.
 
 - Go tests passed on actual macOS, Windows and Ubuntu runners.
 - Real upstream Xray / sing-box binaries accepted ten generated protocol/transport fixtures.

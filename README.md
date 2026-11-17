@@ -8,6 +8,8 @@
 
 ![Панель LOCKLANE](docs/interface.png)
 
+[Скачать сборку для Mac или Windows](https://github.com/leoaic0nt3nt/locklane/releases/tag/v0.1.0-beta.1) · [Открыть PDF-гайд](https://github.com/leoaic0nt3nt/locklane/releases/download/v0.1.0-beta.1/LOCKLANE-Guide-RU.pdf)
+
 ## Быстрый старт
 
 1. Установи [Docker Desktop](https://docs.docker.com/desktop/) и запусти Linux containers. На Windows нужен поддерживаемый Docker Desktop вариант WSL 2/Hyper-V; смотри [официальные требования](https://docs.docker.com/desktop/setup/install/windows-install/). На Mac выбери Apple silicon или Intel. У Docker Desktop есть собственные [условия лицензирования](https://docs.docker.com/subscription/desktop-license/).

@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-"fmt"
+	"fmt"
 	"net"
-"os"
-"path/filepath"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -15,9 +15,7 @@ const testUUID = "11111111-2222-4333-8444-555555555555"
 
 func TestProxyFormats(t *testing.T) {
 	ss := base64.RawURLEncoding.EncodeToString([]byte("chacha20-ietf-poly1305:example-password"))
-	vm, _ := json.Marshal(map[string]any{"v": "2", "ps": "demo", "add": "example.com", "port": "443", "id": testUUID, "aid": "0", "net"
-"os"
-"path/filepath": "ws", "path": "/path", "tls": "tls"})
+	vm, _ := json.Marshal(map[string]any{"v": "2", "ps": "demo", "add": "example.com", "port": "443", "id": testUUID, "aid": "0", "net": "ws", "path": "/path", "tls": "tls"})
 	links := []string{"vless://" + testUUID + "@example.com:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&type=tcp#Demo", "vless://" + testUUID + "@example.com:443?security=tls&type=xhttp&path=%2Ftest&mode=auto", "vmess://" + base64.StdEncoding.EncodeToString(vm), "trojan://password@example.com:443?security=tls&type=grpc&serviceName=demo", "ss://" + ss + "@example.com:443#demo", "hy2://password@example.com:443?sni=example.com&obfs=salamander&obfs-password=test", "tuic://" + testUUID + ":password@example.com:443", "socks://user:pass@example.com:1080"}
 	for _, link := range links {
 		n, e := parseProxyLink(link, false)
@@ -62,16 +60,32 @@ func TestPrivateSubscriptionTargetsRejected(t *testing.T) {
 	}
 }
 
-func TestExportCoreFixtures(t *testing.T){dir:=os.Getenv("LOCKLANE_FIXTURES_DIR");if dir==""{t.Skip("core fixture export requested only by integration")};if e:=os.MkdirAll(dir,0700);e!=nil{t.Fatal(e)}
- links:=[]string{
- "vless://"+testUUID+"@203.0.113.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&type=tcp&sni=example.com",
- "vless://"+testUUID+"@203.0.113.1:443?security=tls&type=xhttp&path=%2Ftest&mode=auto&sni=example.com",
- "vless://"+testUUID+"@203.0.113.1:443?security=tls&type=ws&path=%2Ftest&sni=example.com",
- "vless://"+testUUID+"@203.0.113.1:443?security=tls&type=grpc&serviceName=demo&sni=example.com",
- "trojan://password@203.0.113.1:443?security=tls&type=grpc&serviceName=demo&sni=example.com",
- "hy2://password@203.0.113.1:443?sni=example.com&obfs=salamander&obfs-password=test",
- "tuic://"+testUUID+":password@203.0.113.1:443?sni=example.com",
- "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@203.0.113.1:443",
- }
- for i,link:=range links{n,e:=parseProxyLink(link,false);if e!=nil{t.Fatal(e)};b,_:=json.Marshal(ProxySecret{Core:n.Core,Outbound:n.Outbound,ServerIP:n.ServerIP});if e=os.WriteFile(filepath.Join(dir,fmt.Sprintf("%02d.json",i)),b,0600);e!=nil{t.Fatal(e)}}
+func TestExportCoreFixtures(t *testing.T) {
+	dir := os.Getenv("LOCKLANE_FIXTURES_DIR")
+	if dir == "" {
+		t.Skip("core fixture export requested only by integration")
+	}
+	if e := os.MkdirAll(dir, 0700); e != nil {
+		t.Fatal(e)
+	}
+	links := []string{
+		"vless://" + testUUID + "@203.0.113.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&type=tcp&sni=example.com",
+		"vless://" + testUUID + "@203.0.113.1:443?security=tls&type=xhttp&path=%2Ftest&mode=auto&sni=example.com",
+		"vless://" + testUUID + "@203.0.113.1:443?security=tls&type=ws&path=%2Ftest&sni=example.com",
+		"vless://" + testUUID + "@203.0.113.1:443?security=tls&type=grpc&serviceName=demo&sni=example.com",
+		"trojan://password@203.0.113.1:443?security=tls&type=grpc&serviceName=demo&sni=example.com",
+		"hy2://password@203.0.113.1:443?sni=example.com&obfs=salamander&obfs-password=test",
+		"tuic://" + testUUID + ":password@203.0.113.1:443?sni=example.com",
+		"ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@203.0.113.1:443",
+	}
+	for i, link := range links {
+		n, e := parseProxyLink(link, false)
+		if e != nil {
+			t.Fatal(e)
+		}
+		b, _ := json.Marshal(ProxySecret{Core: n.Core, Outbound: n.Outbound, ServerIP: n.ServerIP})
+		if e = os.WriteFile(filepath.Join(dir, fmt.Sprintf("%02d.json", i)), b, 0600); e != nil {
+			t.Fatal(e)
+		}
+	}
 }

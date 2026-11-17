@@ -26,7 +26,10 @@ def wait_state(path, predicate, timeout=70):
   except (OSError,ValueError):pass
   time.sleep(1)
  logs=d('logs',PREFIX+'gateway',check=False)
- raise RuntimeError('Gateway not ready: '+logs.stderr[-2500:]+'\n'+logs.stdout[-1000:])
+ detail={}
+ for label,args in [('state',['cat','/state/status.json']),('routes',['ip','route','show','table','all']),('rules',['ip','rule']),('filter',['iptables','-nvL','OUTPUT']),('probe',['setpriv','--reuid=1001','--regid=1001','--clear-groups','curl','-4','-v','--max-time','6','https://api.ipify.org']),('bridge',['curl','-4','--socks5-hostname','127.0.0.2:1080','-v','--max-time','6','https://api.ipify.org'])]:
+  result=d('exec',PREFIX+'gateway',*args,check=False);detail[label]=result.stdout[-3500:]+result.stderr[-3500:]
+ raise RuntimeError('Gateway not ready: '+logs.stderr[-2500:]+'\n'+logs.stdout[-1000:]+'\n'+json.dumps(detail))
 def canary(root):
  d('rm','-f',PREFIX+'canary',check=False)
  d('run','-d','--name',PREFIX+'canary','--network','container:'+PREFIX+'gateway','--user','1000:1000','--cap-drop=ALL','--security-opt','no-new-privileges:true','--read-only','--tmpfs','/tmp:rw,nosuid,size=32m','-v',str(root/'status')+':/state:ro','-v',str(root/'resolv.conf')+':/etc/resolv.conf:ro',WORK)

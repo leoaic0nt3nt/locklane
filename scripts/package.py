@@ -19,7 +19,10 @@ for system,arch in [('darwin','arm64'),('darwin','amd64'),('windows','amd64'),('
    (folder/'Install.ps1').write_text("$ErrorActionPreference='Stop'\n$dest=Join-Path $env:LOCALAPPDATA 'LOCKLANE'\nif(Test-Path $dest){throw 'LOCKLANE already exists. Back up the previous app first.'}\nNew-Item -ItemType Directory -Path $dest | Out-Null\nCopy-Item (Join-Path $PSScriptRoot 'LOCKLANE.exe') $dest\n$s=(New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'LOCKLANE.lnk'))\n$s.TargetPath=Join-Path $dest 'LOCKLANE.exe';$s.Save()\nStart-Process (Join-Path $dest 'LOCKLANE.exe')\n")
   env=os.environ.copy();env.update(GOOS=system,GOARCH=arch,CGO_ENABLED='0')
   subprocess.run([GO,'build','-trimpath','-ldflags=-s -w','-o',str(binary),'.'],env=env,check=True)
-  if system=='darwin' and platform.system()=='Darwin':subprocess.run(['codesign','--force','--sign','-','--timestamp=none',str(app)],check=True)
+  if system=='darwin' and platform.system()=='Darwin':
+   subprocess.run(['codesign','--force','--sign','-','--timestamp=none',str(binary)],check=True)
+   subprocess.run(['codesign','--force','--sign','-','--timestamp=none',str(app)],check=True)
+   subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
   for f in ['README.md','LICENSE','SECURITY.md','COMPATIBILITY.md','THIRD_PARTY.md']:shutil.copyfile(ROOT/f,folder/f)
   shutil.copytree(ROOT/'docs',folder/'docs')
   with zipfile.ZipFile(OUT/(name+'.zip'),'w',compression=zipfile.ZIP_DEFLATED) as z:

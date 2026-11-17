@@ -167,6 +167,13 @@ func probe() (string, error) {
 	return out, nil
 }
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "check-profile" {
+		if e := validateProxy(); e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "check" {
 		b, e := os.ReadFile("/state/status.json")
 		var s State
@@ -232,10 +239,10 @@ func main() {
 
 // Keep no HTTP control service, Docker socket or shell endpoint in the gateway.
 
-func startProxy() error {
+func prepareProxy() (string, error) {
 	b, e := os.ReadFile("/secrets/proxy.json")
 	if e != nil {
-		return errors.New("Proxy profile is missing")
+		return "", errors.New("Proxy profile is missing")
 	}
 	var p struct {
 		Core     string         `json:"core"`
@@ -243,25 +250,19 @@ func startProxy() error {
 		ServerIP string         `json:"server_ip"`
 	}
 	if json.Unmarshal(b, &p) != nil || net.ParseIP(p.ServerIP) == nil {
-		return errors.New("Proxy profile is invalid")
+		return "", errors.New("Proxy profile is invalid")
 	}
 	outbound := p.Outbound
 	if p.Core == "xray" {
 		cfg := map[string]any{"log": map[string]string{"loglevel": "warning", "access": "none"}, "inbounds": []any{map[string]any{"listen": "127.0.0.2", "port": 1080, "protocol": "socks", "settings": map[string]any{"auth": "noauth", "udp": true}}}, "outbounds": []any{outbound}}
 		raw, _ := json.Marshal(cfg)
 		if e = os.WriteFile("/run/xray.json", raw, 0600); e != nil {
-			return e
+			return "", e
 		}
-		cmd := exec.Command("xray", "run", "-config", "/run/xray.json")
-		cmd.Stderr = os.Stderr
-		if e = cmd.Start(); e != nil {
-			return e
-		}
-		go cmd.Wait()
 		// This private loopback address is NOT allowed to the workspace by iptables.
 		outbound = map[string]any{"type": "socks", "tag": "proxy", "server": "127.0.0.2", "server_port": 1080, "version": "5"}
 	} else if p.Core != "singbox" {
-		return errors.New("Unknown proxy engine")
+		return "", errors.New("Unknown proxy engine")
 	}
 	cfg := map[string]any{
 		"log":       map[string]string{"level": "warn"},
@@ -272,13 +273,44 @@ func startProxy() error {
 	}
 	raw, _ := json.Marshal(cfg)
 	if e = os.WriteFile("/run/singbox.json", raw, 0600); e != nil {
+		return "", e
+	}
+	return p.Core, nil
+}
+
+func startProxy() error {
+	core, e := prepareProxy()
+	if e != nil {
 		return e
 	}
-	cmd := exec.Command("sing-box", "run", "-c", "/run/singbox.json")
-	cmd.Stderr = os.Stderr
-	if e = cmd.Start(); e != nil {
+	if core == "xray" {
+		c := exec.Command("xray", "run", "-config", "/run/xray.json")
+		c.Stderr = os.Stderr
+		if e = c.Start(); e != nil {
+			return e
+		}
+		go c.Wait()
+	}
+	c := exec.Command("sing-box", "run", "-c", "/run/singbox.json")
+	c.Stderr = os.Stderr
+	if e = c.Start(); e != nil {
 		return e
 	}
-	go cmd.Wait()
+	go c.Wait()
+	return nil
+}
+func validateProxy() error {
+	core, e := prepareProxy()
+	if e != nil {
+		return e
+	}
+	if core == "xray" {
+		if out, err := run("xray", "run", "-test", "-config", "/run/xray.json"); err != nil {
+			return fmt.Errorf("Xray configuration invalid: %s", out)
+		}
+	}
+	if out, err := run("sing-box", "check", "-c", "/run/singbox.json"); err != nil {
+		return fmt.Errorf("sing-box configuration invalid: %s", out)
+	}
 	return nil
 }

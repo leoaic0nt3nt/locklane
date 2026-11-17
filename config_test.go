@@ -71,6 +71,12 @@ func TestComposeSecurityBoundaries(t *testing.T) {
 	if _, ok := g["privileged"]; ok {
 		t.Fatal("privileged gateway")
 	}
+	if os.PathSeparator == '/' {
+		st, _ := os.Stat(filepath.Join(homeDir(), "resolv.conf"))
+		if st.Mode().Perm() != 0644 {
+			t.Fatal("unprivileged DNS resolver cannot read resolv.conf")
+		}
+	}
 	if strings.Contains(string(b), "docker.sock") || strings.Contains(string(b), "host.docker.internal") {
 		t.Fatal("host access leaked")
 	}

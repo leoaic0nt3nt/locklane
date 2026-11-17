@@ -13,7 +13,7 @@ def cmd(*args,check=True,input=None):
 def d(*args,**kw):return cmd('docker',*args,**kw)
 def record(name):proof['checks'].append({'name':name,'passed':True});print('PASS',name,flush=True)
 def cleanup():
- for c in ['canary','gateway','server','ss']:
+ for c in ['canary','gateway','server','ss','stream']:
   d('rm','-f',PREFIX+c,check=False)
  d('network','rm',N,check=False)
 
@@ -38,7 +38,7 @@ DENIED="import socket; s=socket.socket(); s.settimeout(2);\ntry: s.connect(('1.1
 def gateway(root,provider,expected):
  d('rm','-f',PREFIX+'gateway',check=False)
  (root/'status'/'status.json').unlink(missing_ok=True)
- args=['run','-d','--name',PREFIX+'gateway','--network',N,'--ip','172.28.0.3','--cap-drop=ALL','--cap-add=NET_ADMIN','--cap-add=NET_RAW','--cap-add=SETUID','--cap-add=SETGID','--device','/dev/net/tun','--security-opt','no-new-privileges:true','-e','LL_PROVIDER='+provider,'-e','LL_EXPECTED_IP='+expected,'-e','LL_ENDPOINT=172.28.0.2','-e','LL_ADDRESSES=10.77.0.2/32','-v',str(root/'status')+':/state','-v',str(root/'resolv.conf')+':/etc/resolv.conf:ro']
+ args=['run','-d','--name',PREFIX+'gateway','--network',N,'--ip','172.28.0.3','--cap-drop=ALL','--cap-add=NET_ADMIN','--cap-add=NET_RAW','--cap-add=SETUID','--cap-add=SETGID','--cap-add=DAC_OVERRIDE','--device','/dev/net/tun','--security-opt','no-new-privileges:true','-e','LL_PROVIDER='+provider,'-e','LL_EXPECTED_IP='+expected,'-e','LL_ENDPOINT=172.28.0.2','-e','LL_ADDRESSES=10.77.0.2/32','-v',str(root/'status')+':/state','-v',str(root/'resolv.conf')+':/etc/resolv.conf:ro']
  if provider=='wireguard':args+=['-v',str(root/'client.conf')+':/secrets/wg.conf:ro']
  else:args+=['-v',str(root/'proxy.json')+':/secrets/proxy.json:ro']
  d(*args,IMAGE)
@@ -48,6 +48,11 @@ try:
  for dockerfile,tag in [('Dockerfile.gateway',IMAGE),('Dockerfile.workspace',WORK)]:
   print('Building',tag,flush=True);p=subprocess.run(['docker','build','-f','runtime/'+dockerfile,'-t',tag,'runtime']);assert p.returncode==0
  record('gateway and Claude workspace images built')
+ env=os.environ.copy();fixtures=ROOT/'qa/core-fixtures';env['LOCKLANE_FIXTURES_DIR']=str(fixtures)
+ subprocess.run(['go','test','-run','TestExportCoreFixtures','.'],env=env,check=True)
+ for f in sorted(fixtures.glob('*.json')):
+  d('run','--rm','-v',str(f)+':/secrets/proxy.json:ro','--entrypoint','locklane-gate',IMAGE,'check-profile')
+ record('generated multi-protocol profiles accepted by real Xray and sing-box binaries')
  d('network','create','--subnet','172.28.0.0/24',N)
  with tempfile.TemporaryDirectory(prefix='ll-test-') as td:
   root=pathlib.Path(td);(root/'status').mkdir(mode=0o777);os.chmod(root/'status',0o777);(root/'resolv.conf').write_text('nameserver 1.1.1.1\n')
@@ -55,11 +60,13 @@ try:
   def pub(k):return d('run','--rm','-i','--entrypoint','wg',IMAGE,'pubkey',input=k+'\n').stdout.strip()
   server,client=key(),key();spub,cpub=pub(server),pub(client)
   (root/'server.key').write_text(server+'\n');(root/'client.conf').write_text('[Interface]\nPrivateKey = '+client+'\n[Peer]\nPublicKey = '+spub+'\nAllowedIPs = 0.0.0.0/0\nEndpoint = 172.28.0.2:51820\nPersistentKeepalive = 25\n')
+  os.chmod(root/'client.conf',0o600)
   script='wireguard-go -f wg0 >/tmp/wg.log 2>&1 &\nfor x in $(seq 1 50); do ip link show wg0 >/dev/null 2>&1 && break; sleep .1; done\nwg set wg0 private-key /test/server.key listen-port 51820 peer '+cpub+' allowed-ips 10.77.0.2/32\nip address add 10.77.0.1/24 dev wg0\nip link set wg0 up\niptables -t nat -A POSTROUTING -s 10.77.0.0/24 -o eth0 -j MASQUERADE\niptables -A FORWARD -i wg0 -j ACCEPT\niptables -A FORWARD -o wg0 -j ACCEPT\nsleep infinity'
   d('run','-d','--name',PREFIX+'server','--network',N,'--ip','172.28.0.2','--cap-add=NET_ADMIN','--device','/dev/net/tun','--sysctl','net.ipv4.ip_forward=1','-v',str(root)+':/test:ro','--entrypoint','bash',IMAGE,'-ec',script)
   expected=d('run','--rm','--entrypoint','curl',IMAGE,'-4','-fsS','--retry','3','https://api.ipify.org').stdout.strip()
   gateway(root,'wireguard',expected);wait_state(root/'status/status.json',lambda s:s.get('ready'));canary(root)
   actual=app("import subprocess; print(subprocess.check_output(['curl','-4','-fsS','--max-time','8','https://api.ipify.org'],text=True).strip())").strip();assert actual==expected;record('WireGuard positive route and exact exit IP')
+  p=d('exec',PREFIX+'canary','locklane-run','--version');assert '2.1.326' in p.stdout;record('real Claude Code binary starts inside a verified namespace without account login')
   app("import os; s=open('/proc/self/status').read(); assert os.getuid()==1000 and 'NoNewPrivs:\\t1' in s and 'CapEff:\\t0000000000000000' in s; assert not os.path.exists('/var/run/docker.sock')")
   record('workspace is unprivileged and has no Docker socket')
   for target in ['169.254.169.254','192.168.1.1','127.0.0.11','127.0.0.2']:
@@ -68,7 +75,15 @@ try:
   app("import subprocess; assert subprocess.run(['curl','-6','-fsS','--max-time','2','https://api64.ipify.org'],capture_output=True).returncode!=0")
   app("import subprocess; assert subprocess.run(['curl','-4','--interface','eth0','-fsS','--max-time','2','https://api.ipify.org'],capture_output=True).returncode!=0")
   record('IPv6 and physical-interface bypass denied')
+  d('exec',PREFIX+'server','ip','address','add','203.0.113.50/32','dev','lo')
+  stream_code="import socket,time; s=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind(('0.0.0.0',9000));s.listen();c,a=s.accept();\nwhile True: c.sendall(b'TICK\\n');time.sleep(.05)"
+  d('run','-d','--name',PREFIX+'stream','--network','container:'+PREFIX+'server','--entrypoint','python3',WORK,'-u','-c',stream_code)
+  time.sleep(1)
+  active="import socket,sys,time; s=socket.create_connection(('203.0.113.50',9000),5);assert s.recv(10);print('READY',flush=True);sys.stdin.readline();s.settimeout(.1);\ntry:\n while s.recv(8192): pass\nexcept OSError: pass\ns.settimeout(2);\ntry: data=s.recv(10)\nexcept OSError: data=b''\nassert not data;print('STREAM_CLOSED',flush=True)"
+  proc=subprocess.Popen(['docker','exec','-i',PREFIX+'canary','python3','-u','-c',active],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+  assert proc.stdout.readline().strip()=='READY'
   d('exec',PREFIX+'gateway','ip','link','del','wg0');d('exec',PREFIX+'gateway','ip','route','replace','default','via','172.28.0.1','dev','eth0')
+  out,err=proc.communicate('\n',timeout=8);assert proc.returncode==0 and 'STREAM_CLOSED' in out,(out,err);record('an existing TCP stream cannot continue after the VPN interface is removed')
   app(DENIED);wait_state(root/'status/status.json',lambda s:not s.get('ready'));d('exec',PREFIX+'canary','locklane-run','--version',check=False)
   p=d('exec',PREFIX+'canary','locklane-run','--version',check=False);assert p.returncode!=0
   record('tunnel deletion with restored direct route remains closed; launcher refuses')

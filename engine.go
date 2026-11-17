@@ -77,6 +77,9 @@ func materialize(c Config) error {
 	if e = writePrivate(filepath.Join(homeDir(), "resolv.conf"), []byte("nameserver 1.1.1.1\noptions timeout:2 attempts:1\n")); e != nil {
 		return e
 	}
+	if e = os.Chmod(filepath.Join(homeDir(), "resolv.conf"), 0644); e != nil {
+		return e
+	}
 	mounts := []any{map[string]any{"type": "volume", "source": "status", "target": "/state"}, map[string]any{"type": "volume", "source": "tailscale", "target": "/var/lib/tailscale"}, map[string]any{"type": "bind", "source": filepath.Join(homeDir(), "resolv.conf"), "target": "/etc/resolv.conf", "read_only": true}}
 	if c.Provider == "wireguard" {
 		mounts = append(mounts, map[string]any{"type": "bind", "source": filepath.Join(homeDir(), "secrets", "wg.conf"), "target": "/secrets/wg.conf", "read_only": true})
@@ -84,7 +87,7 @@ func materialize(c Config) error {
 	if c.Provider == "proxy" {
 		mounts = append(mounts, map[string]any{"type": "bind", "source": filepath.Join(homeDir(), "secrets", "proxy.json"), "target": "/secrets/proxy.json", "read_only": true})
 	}
-	gateway := map[string]any{"build": map[string]any{"context": root, "dockerfile": "Dockerfile.gateway"}, "image": "locklane-gateway:0.1.0", "cap_drop": []string{"ALL"}, "cap_add": []string{"NET_ADMIN", "NET_RAW", "SETUID", "SETGID"}, "devices": []string{"/dev/net/tun:/dev/net/tun"}, "security_opt": []string{"no-new-privileges:true"}, "environment": map[string]string{"LL_PROVIDER": c.Provider, "LL_EXPECTED_IP": c.ExpectedIP, "LL_EXIT_NODE": c.ExitNode, "LL_ENDPOINT": c.Endpoint, "LL_ADDRESSES": c.Addresses}, "volumes": mounts, "restart": "unless-stopped", "pids_limit": 150, "stop_grace_period": "12s"}
+	gateway := map[string]any{"build": map[string]any{"context": root, "dockerfile": "Dockerfile.gateway"}, "image": "locklane-gateway:0.1.0", "cap_drop": []string{"ALL"}, "cap_add": []string{"NET_ADMIN", "NET_RAW", "SETUID", "SETGID", "DAC_OVERRIDE"}, "devices": []string{"/dev/net/tun:/dev/net/tun"}, "security_opt": []string{"no-new-privileges:true"}, "environment": map[string]string{"LL_PROVIDER": c.Provider, "LL_EXPECTED_IP": c.ExpectedIP, "LL_EXIT_NODE": c.ExitNode, "LL_ENDPOINT": c.Endpoint, "LL_ADDRESSES": c.Addresses}, "volumes": mounts, "restart": "unless-stopped", "pids_limit": 150, "stop_grace_period": "12s"}
 	workspace := map[string]any{"build": map[string]any{"context": root, "dockerfile": "Dockerfile.workspace"}, "image": "locklane-workspace:0.1.0", "network_mode": "service:gateway", "depends_on": map[string]any{"gateway": map[string]string{"condition": "service_healthy"}}, "user": "1000:1000", "cap_drop": []string{"ALL"}, "security_opt": []string{"no-new-privileges:true"}, "read_only": true, "tmpfs": []string{"/tmp:rw,nosuid,size=256m"}, "volumes": []any{map[string]any{"type": "bind", "source": c.Project, "target": "/workspace"}, map[string]any{"type": "volume", "source": "claude-home", "target": "/home/node"}, map[string]any{"type": "volume", "source": "status", "target": "/state", "read_only": true}, map[string]any{"type": "bind", "source": filepath.Join(homeDir(), "resolv.conf"), "target": "/etc/resolv.conf", "read_only": true}}, "pids_limit": 300, "init": true, "restart": "no"}
 	data := map[string]any{"services": map[string]any{"gateway": gateway, "workspace": workspace}, "volumes": map[string]any{"status": map[string]string{}, "tailscale": map[string]string{}, "claude-home": map[string]string{}}}
 	b, _ := json.MarshalIndent(data, "", "  ")
